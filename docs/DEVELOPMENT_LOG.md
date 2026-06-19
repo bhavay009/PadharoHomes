@@ -161,8 +161,7 @@ with a working test harness — and nothing faked.
 
 ## Phase 2 — Listings / units management (at scale)
 
-**Status:** ✅ COMPLETE (code + tests green) — ⚠️ one pending item: live photo-upload
-verification awaits Cloudinary credentials.
+**Status:** ✅ COMPLETE — code + tests green, live Cloudinary upload verified.
 
 ### Decisions (confirmed with user, not assumed)
 - **Photos:** real file **upload to object storage** (not URL-only).
@@ -199,7 +198,10 @@ verification awaits Cloudinary credentials.
 - **Isolation check:** post-suite row counts = 0 for hosts/units/unit_photos/otp_codes.
 - **Frontend build smoke:** `npm run build` ✓ (no warnings).
 
-### Pending (carry-over)
-- ⚠️ **Live Cloudinary upload not yet verified** — needs `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET`
-  in `backend/.env`. Once set, `test_photo_upload` automatically switches from the 503 assertion
-  to a real upload + asset-URL assertion (with cleanup). This is the only item to fully close Phase 2.
+### Live Cloudinary verification (carry-over closed)
+- `CLOUDINARY_*` creds added to `backend/.env` (gitignored; `cloudinary_configured` → True).
+- **`test_photo_upload` (real path):** 1 passed in 7.4s — genuine upload, real `secure_url` returned.
+- **Full suite with Cloudinary on:** `29 passed in 38.9s`.
+- **Live end-to-end smoke:** login → create unit → upload real PNG → Cloudinary URL returned;
+  fetching that URL → **HTTP 200, content-type image/png** (asset truly stored & served);
+  `DELETE /units/{id}` → 204 (removes the Cloudinary asset + rows). DB left clean.
