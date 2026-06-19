@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getMe, getToken, clearToken, API_URL } from "./api";
 import Login from "./Login";
+import Dashboard from "./Dashboard";
 
 export default function App() {
   const [host, setHost] = useState(null);
@@ -34,15 +35,11 @@ export default function App() {
         <p>Loading…</p>
       ) : host ? (
         <section>
-          <h2>Welcome</h2>
-          <p>
-            Signed in as <strong>{host.email}</strong>
-          </p>
-          <p style={{ color: "#666" }}>
-            Host dashboard (listings, calendar, bookings) arrives in the next
-            phases.
-          </p>
-          <button onClick={handleLogout}>Sign out</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <p>Signed in as <strong>{host.email}</strong></p>
+            <button onClick={handleLogout}>Sign out</button>
+          </div>
+          <Dashboard />
         </section>
       ) : (
         <Login onLoggedIn={setHost} />

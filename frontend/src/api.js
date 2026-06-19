@@ -39,4 +39,40 @@ export const verifyOtp = (email, code) =>
   request("/auth/verify-otp", { method: "POST", body: { email, code } });
 export const getMe = () => request("/auth/me", { auth: true });
 
+// ---- Units ----
+export function listUnits({ q, city, status, limit = 20, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (city) params.set("city", city);
+  if (status) params.set("status", status);
+  params.set("limit", limit);
+  params.set("offset", offset);
+  return request(`/units?${params.toString()}`, { auth: true });
+}
+export const createUnit = (body) =>
+  request("/units", { method: "POST", body, auth: true });
+export const getUnit = (id) => request(`/units/${id}`, { auth: true });
+export const updateUnit = (id, body) =>
+  request(`/units/${id}`, { method: "PATCH", body, auth: true });
+export const deleteUnit = (id) =>
+  request(`/units/${id}`, { method: "DELETE", auth: true });
+export const bulkUpdateUnits = (body) =>
+  request("/units/bulk", { method: "POST", body, auth: true });
+
+export async function uploadPhoto(unitId, file) {
+  const form = new FormData();
+  form.append("file", file);
+  const headers = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_URL}/units/${unitId}/photos`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Upload failed: ${res.status}`);
+  return data;
+}
+
 export { API_URL };
