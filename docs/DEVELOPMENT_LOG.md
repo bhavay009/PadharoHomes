@@ -66,7 +66,52 @@ with a working test harness — and nothing faked.
 8. Run all tests; record results below.
 
 ### Steps taken
-_(updated as work proceeds)_
+1. Verified local tooling: Python 3.13.5, Node 25.1.0, npm 11.6.2, git 2.47.0.
+   PostgreSQL/Docker not installed locally → decision: **hosted Postgres (Neon/Supabase)**
+   wired via `DATABASE_URL`.
+2. Created repo structure: `backend/`, `frontend/`, `docs/`.
+3. `git init` on `main`, committed PRD + docs, branched `phase-0-foundation`.
+4. Added `.gitignore` (ignores `.venv/`, `node_modules/`, `.env`, build artifacts).
+5. Backend skeleton:
+   - `backend/requirements.txt` (FastAPI, SQLAlchemy 2.x, psycopg v3, Alembic, pydantic-settings, pytest, httpx).
+   - `app/core/config.py` — settings from env/.env; `DATABASE_URL` optional at import, never hardcoded.
+   - `app/core/database.py` — lazy SQLAlchemy engine/session; raises `DatabaseNotConfiguredError`
+     instead of silently faking a DB; `Base` declarative class for future models.
+   - `app/api/health.py` — `GET /health` (liveness) and `GET /health/db` (real `SELECT 1`,
+     503 if unconfigured/unreachable).
+   - `app/main.py` — FastAPI app + CORS for the Vite dev origin.
+   - `backend/.env.example` documents the `DATABASE_URL` shape.
+6. Created `backend/.venv`, installed deps, verified imports.
+7. Initialized Alembic; configured `alembic/env.py` to pull the real URL from `settings`
+   and use `Base.metadata` (no credentials in `alembic.ini`). No migrations yet (no models).
+8. pytest harness: `pytest.ini`, `tests/conftest.py` (TestClient fixture),
+   `tests/test_health.py` (smoke + DB connectivity), `tests/test_config.py` (config unit).
+9. Frontend skeleton: scaffolded Vite React app, `src/api.js` (base URL from `VITE_API_URL`),
+   `src/App.jsx` shows live backend health; `frontend/.env.example` added.
 
 ### Test results
-_(pending)_
+- **Backend pytest:** `5 passed` — app smoke (`/health` 200), config unit (×3),
+  DB connectivity (honestly 503 "unconfigured" while no `DATABASE_URL`).
+- **Frontend build smoke:** `npm run build` ✓ (17 modules, built in ~0.4s).
+- **Live end-to-end smoke:** started uvicorn; `GET /health` → `{"status":"ok","env":"development"}`;
+  `GET /health/db` → `503 {"status":"unconfigured"}` (correct — no DB configured yet).
+
+### Live DB verification (carry-over closed)
+- `DATABASE_URL` (Neon, `ap-southeast-1`, pooled) added to `backend/.env` (gitignored;
+  scheme normalized to `postgresql+psycopg://`, keeping `sslmode=require&channel_binding=require`).
+- Confirmed `.env` is git-ignored (`git check-ignore .env` → match).
+- **pytest against live DB:** `5 passed in 2.88s` (real round-trip vs 0.01s offline).
+- **Live `/health/db`:** `200 {"status":"ok","database":"reachable"}`.
+- **Alembic connectivity:** `alembic current` connects to Neon (PostgresqlImpl), no revisions yet.
+
+**Status:** ✅ COMPLETE — code + tests green, live DB verified.
+
+---
+
+## Phase 1 — Host auth & account
+
+**Status:** NOT STARTED (next)
+
+Scope: host model, email/phone OTP auth + sessions, login/OTP React UI. First Alembic
+migration (host table) runs against Neon. Will confirm OTP delivery approach (real email/SMS
+provider vs dev-console code) before building — not assumed.
