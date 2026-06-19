@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -)",
+      "Bash(textutil -convert docx -output PRD.docx /tmp/prd.html)",
+      "Bash(textutil -convert odt -output PRD.odt /tmp/prd.html)"
+    ]
+  }
+}
