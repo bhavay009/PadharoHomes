@@ -21,9 +21,23 @@ class Settings(BaseSettings):
     # Hosted Postgres connection string (e.g. Neon/Supabase). Empty until provided.
     database_url: str = ""
 
+    # Auth / JWT. SECRET_KEY must be supplied via env (.env); never hardcoded.
+    secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
+
+    # OTP policy
+    otp_length: int = 6
+    otp_ttl_minutes: int = 10
+    otp_max_attempts: int = 5
+
     @property
     def database_configured(self) -> bool:
         return bool(self.database_url.strip())
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() in {"production", "prod"}
 
 
 settings = Settings()

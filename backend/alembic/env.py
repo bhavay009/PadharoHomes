@@ -13,6 +13,7 @@ config = context.config
 # overriding the placeholder in alembic.ini. No credentials are hardcoded.
 from app.core.config import settings  # noqa: E402
 from app.core.database import Base  # noqa: E402
+import app.models  # noqa: E402,F401  (registers all tables on Base.metadata)
 
 if settings.database_configured:
     config.set_main_option("sqlalchemy.url", settings.database_url)

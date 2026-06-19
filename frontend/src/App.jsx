@@ -1,33 +1,52 @@
 import { useEffect, useState } from "react";
-import { getHealth, API_URL } from "./api";
+import { getMe, getToken, clearToken, API_URL } from "./api";
+import Login from "./Login";
 
 export default function App() {
-  const [status, setStatus] = useState("checking…");
-  const [error, setError] = useState(null);
+  const [host, setHost] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // On load, if we have a token, resolve the current host.
   useEffect(() => {
-    getHealth()
-      .then((data) => setStatus(`${data.status} (env: ${data.env})`))
-      .catch((err) => setError(err.message));
+    if (!getToken()) {
+      setLoading(false);
+      return;
+    }
+    getMe()
+      .then(setHost)
+      .catch(() => clearToken())
+      .finally(() => setLoading(false));
   }, []);
+
+  function handleLogout() {
+    clearToken();
+    setHost(null);
+  }
 
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem" }}>
       <h1>Padharo Homes</h1>
-      <p>Direct-booking platform — Phase 0 skeleton.</p>
-      <section>
-        <h2>Backend health</h2>
-        <p>
-          API: <code>{API_URL}</code>
-        </p>
-        {error ? (
-          <p style={{ color: "crimson" }}>Error: {error}</p>
-        ) : (
+      <p style={{ color: "#666" }}>
+        Direct-booking platform · API <code>{API_URL}</code>
+      </p>
+
+      {loading ? (
+        <p>Loading…</p>
+      ) : host ? (
+        <section>
+          <h2>Welcome</h2>
           <p>
-            Status: <strong>{status}</strong>
+            Signed in as <strong>{host.email}</strong>
           </p>
-        )}
-      </section>
+          <p style={{ color: "#666" }}>
+            Host dashboard (listings, calendar, bookings) arrives in the next
+            phases.
+          </p>
+          <button onClick={handleLogout}>Sign out</button>
+        </section>
+      ) : (
+        <Login onLoggedIn={setHost} />
+      )}
     </main>
   );
 }
