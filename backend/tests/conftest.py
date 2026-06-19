@@ -56,3 +56,23 @@ def client_db(db_session):
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+def make_host(db_session, email: str | None = None):
+    """Create a real host in the isolated session and return (host, headers)."""
+    import uuid
+
+    from app.core.security import create_access_token
+    from app.services.auth_service import get_or_create_host
+
+    email = email or f"host_{uuid.uuid4().hex[:12]}@example.com"
+    host = get_or_create_host(db_session, email)
+    headers = {"Authorization": f"Bearer {create_access_token(subject=str(host.id))}"}
+    return host, headers
+
+
+@pytest.fixture()
+def host_auth(db_session):
+    """A logged-in host: dict with `host` and `headers`."""
+    host, headers = make_host(db_session)
+    return {"host": host, "headers": headers}

@@ -31,9 +31,28 @@ class Settings(BaseSettings):
     otp_ttl_minutes: int = 10
     otp_max_attempts: int = 5
 
+    # Cloudinary (photo uploads). Supplied via env; never hardcoded.
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+
+    # Default currency for listings.
+    default_currency: str = "INR"
+
     @property
     def database_configured(self) -> bool:
         return bool(self.database_url.strip())
+
+    @property
+    def cloudinary_configured(self) -> bool:
+        return all(
+            v.strip()
+            for v in (
+                self.cloudinary_cloud_name,
+                self.cloudinary_api_key,
+                self.cloudinary_api_secret,
+            )
+        )
 
     @property
     def is_production(self) -> bool:
