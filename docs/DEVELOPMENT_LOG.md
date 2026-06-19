@@ -96,10 +96,22 @@ with a working test harness — and nothing faked.
 - **Live end-to-end smoke:** started uvicorn; `GET /health` → `{"status":"ok","env":"development"}`;
   `GET /health/db` → `503 {"status":"unconfigured"}` (correct — no DB configured yet).
 
-### Pending (carry-over)
-- ⚠️ **Real DB connectivity not yet verified** against a live Neon/Supabase instance — needs
-  a `DATABASE_URL`. Once provided in `backend/.env`, the existing `/health/db` + the
-  `test_health_db_connectivity` test will verify a genuine round-trip (no faking). This is the
-  one item required to fully close Phase 0 and is a prerequisite for Phase 1 migrations.
+### Live DB verification (carry-over closed)
+- `DATABASE_URL` (Neon, `ap-southeast-1`, pooled) added to `backend/.env` (gitignored;
+  scheme normalized to `postgresql+psycopg://`, keeping `sslmode=require&channel_binding=require`).
+- Confirmed `.env` is git-ignored (`git check-ignore .env` → match).
+- **pytest against live DB:** `5 passed in 2.88s` (real round-trip vs 0.01s offline).
+- **Live `/health/db`:** `200 {"status":"ok","database":"reachable"}`.
+- **Alembic connectivity:** `alembic current` connects to Neon (PostgresqlImpl), no revisions yet.
 
-**Status:** COMPLETE (code + tests green) — pending live DB verification with your connection string.
+**Status:** ✅ COMPLETE — code + tests green, live DB verified.
+
+---
+
+## Phase 1 — Host auth & account
+
+**Status:** NOT STARTED (next)
+
+Scope: host model, email/phone OTP auth + sessions, login/OTP React UI. First Alembic
+migration (host table) runs against Neon. Will confirm OTP delivery approach (real email/SMS
+provider vs dev-console code) before building — not assumed.
