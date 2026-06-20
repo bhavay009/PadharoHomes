@@ -8,7 +8,9 @@ export default function UnitForm({ unit, onSaved, onCancel }) {
     title: unit?.title ?? "",
     city: unit?.city ?? "",
     base_price: unit?.base_price ?? "",
+    weekend_price: unit?.weekend_price ?? "",
     deposit_percent: unit?.deposit_percent ?? "0",
+    min_stay_nights: unit?.min_stay_nights ?? 1,
     capacity: unit?.capacity ?? 1,
     amenities: (unit?.amenities ?? []).join(", "),
     description: unit?.description ?? "",
@@ -29,7 +31,9 @@ export default function UnitForm({ unit, onSaved, onCancel }) {
       title: form.title,
       city: form.city,
       base_price: form.base_price,
+      weekend_price: form.weekend_price ? form.weekend_price : null,
       deposit_percent: form.deposit_percent || "0",
+      min_stay_nights: Number(form.min_stay_nights) || 1,
       capacity: Number(form.capacity),
       description: form.description || null,
       amenities: form.amenities
@@ -74,9 +78,15 @@ export default function UnitForm({ unit, onSaved, onCancel }) {
       <input style={field} placeholder="Base price / night" required type="number"
         min="1" step="0.01" value={form.base_price}
         onChange={(e) => set("base_price", e.target.value)} />
+      <input style={field} placeholder="Weekend price (Sat/Sun, optional)" type="number"
+        min="1" step="0.01" value={form.weekend_price}
+        onChange={(e) => set("weekend_price", e.target.value)} />
       <input style={field} placeholder="Deposit %" type="number" min="0" max="100"
         step="0.01" value={form.deposit_percent}
         onChange={(e) => set("deposit_percent", e.target.value)} />
+      <input style={field} placeholder="Min stay (nights)" type="number" min="1"
+        value={form.min_stay_nights}
+        onChange={(e) => set("min_stay_nights", e.target.value)} />
       <input style={field} placeholder="Capacity" type="number" min="1"
         value={form.capacity} onChange={(e) => set("capacity", e.target.value)} />
       <input style={field} placeholder="Amenities (comma separated)"
