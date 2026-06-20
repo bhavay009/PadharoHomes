@@ -105,6 +105,25 @@ export function getCalendar(unitId, start, end) {
   return request(`/units/${unitId}/calendar?${p}`, { auth: true });
 }
 
+// ---- Host bookings & metrics ----
+export function listHostBookings({ status, unit_id, limit = 50, offset = 0 } = {}) {
+  const p = new URLSearchParams();
+  if (status) p.set("status", status);
+  if (unit_id) p.set("unit_id", unit_id);
+  p.set("limit", limit);
+  p.set("offset", offset);
+  return request(`/bookings?${p.toString()}`, { auth: true });
+}
+export const checkInBooking = (id) =>
+  request(`/bookings/${id}/check-in`, { method: "POST", auth: true });
+export const completeBooking = (id, balance_collected) =>
+  request(`/bookings/${id}/complete`, { method: "POST", body: { balance_collected }, auth: true });
+export const noShowBooking = (id) =>
+  request(`/bookings/${id}/no-show`, { method: "POST", auth: true });
+export const hostCancelBooking = (id) =>
+  request(`/bookings/${id}/cancel`, { method: "POST", auth: true });
+export const getMetrics = () => request("/dashboard/metrics", { auth: true });
+
 export async function uploadPhoto(unitId, file) {
   const form = new FormData();
   form.append("file", file);

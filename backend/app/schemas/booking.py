@@ -58,3 +58,28 @@ class PaymentIntentOut(BaseModel):
 class BookingCreateOut(BaseModel):
     booking: BookingOut
     payment: PaymentIntentOut
+
+
+class HostBookingListOut(BaseModel):
+    items: list[BookingOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class CompleteIn(BaseModel):
+    balance_collected: bool = True
+
+
+class DashboardMetricsOut(BaseModel):
+    total_units: int
+    published_units: int
+    bookings_by_status: dict[str, int]
+    revenue_booked: Decimal
+    cash_collected: Decimal
+    outstanding_balance: Decimal
+    commission_saved: Decimal
+    ota_commission_percent: Decimal
+    currency: str
+    occupancy_percent: Decimal
+    occupancy_window_days: int

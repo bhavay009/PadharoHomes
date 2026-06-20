@@ -350,3 +350,46 @@ with a working test harness — and nothing faked.
 - Host-facing booking management endpoints (list bookings, check-in, complete + mark balance
   collected, no-show). The service logic + state machine are implemented and tested now; only
   the host HTTP endpoints + dashboard UI remain.
+
+---
+
+## Phase 6 — Host dashboard metrics & reconciliation
+
+**Status:** ✅ COMPLETE — code + tests green, live verified.
+
+### Decisions (confirmed with user, not assumed)
+- **Commission saved** = configurable fixed % (`OTA_COMMISSION_PERCENT`, default 15) × booked revenue.
+- **Revenue** shows **both** booked value and cash collected.
+
+### Metric definitions (documented in `metrics_service.py`)
+- `revenue_booked` = Σ subtotal of active bookings (confirmed/checked_in/completed).
+- `cash_collected` = deposits paid (any later status) + balances marked collected.
+- `outstanding_balance` = Σ balance of active bookings not yet collected.
+- `commission_saved` = rate% × revenue_booked.
+- `occupancy_percent` = booked nights in next N days / (published_units × N).
+
+### Steps taken
+1. Branched `phase-6-host-dashboard`.
+2. Config: `OTA_COMMISSION_PERCENT` (Decimal, default 15), `OCCUPANCY_WINDOW_DAYS` (30);
+   documented in `.env.example`.
+3. `metrics_service.dashboard_metrics`: SQL aggregates (revenue/cash/outstanding/commission,
+   bookings-by-status) + Python occupancy over the rolling window.
+4. `booking_service`: `get_host_booking`, `list_host_bookings` (status/unit filters + pagination).
+5. Routes (`app/api/host_bookings.py`, authenticated): `GET /bookings` (+filters),
+   `GET /bookings/{id}`, `POST /bookings/{id}/{check-in|complete|no-show|cancel}`,
+   `GET /dashboard/metrics`. All host-scoped (other hosts → 404). Reuses the Phase 5 state machine.
+6. No migration (no schema change).
+7. Frontend: `HostBookings.jsx` (metric cards + bookings table with transition actions),
+   plus a Listings/Bookings tab switch in the host area.
+
+### Test results
+- **Backend pytest:** `66 passed in 284s` (9 new in `test_host_dashboard.py`):
+  host lists only own bookings, status filter, check-in→complete (balance collected),
+  cannot check-in pending, **cross-host 404 on view + transitions**, no-show endpoint,
+  metrics (revenue/cash/outstanding/commission math; cash rises + outstanding clears on
+  completion), occupancy-in-window > 0, empty-host zeros.
+- **Isolation check:** post-suite all domain tables = 0 rows.
+- **Live smoke:** deposit paid → revenue ₹2000 / cash ₹400 / outstanding ₹1600 /
+  commission ₹300 (15%); after complete(balance) → cash ₹2000 / outstanding ₹0 /
+  completed count 1. Cleaned up.
+- **Frontend build smoke:** `npm run build` ✓.

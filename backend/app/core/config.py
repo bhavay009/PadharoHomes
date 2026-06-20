@@ -7,6 +7,8 @@ explicitly.
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,6 +45,12 @@ class Settings(BaseSettings):
     booking_hold_minutes: int = 15
     # Active payment gateway: "mock" | "razorpay" | "stripe" (only "mock" wired now).
     payment_gateway: str = "mock"
+
+    # Dashboard: assumed aggregator commission rate (percent) a host avoids by
+    # taking direct bookings. Used for the "commission saved" metric. Configurable.
+    ota_commission_percent: Decimal = Decimal("15")
+    # Rolling window (days) for the occupancy metric.
+    occupancy_window_days: int = 30
 
     @property
     def database_configured(self) -> bool:
