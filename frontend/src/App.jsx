@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { getMe, getToken, clearToken, API_URL } from "./api";
 import Login from "./Login";
 import Dashboard from "./Dashboard";
+import HostBookings from "./HostBookings";
 import Storefront from "./Storefront";
 
 export default function App() {
   const [mode, setMode] = useState("guest"); // "guest" | "host"
+  const [hostTab, setHostTab] = useState("listings"); // "listings" | "bookings"
   const [host, setHost] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,10 +48,16 @@ export default function App() {
       ) : host ? (
         <section>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <p>Signed in as <strong>{host.email}</strong></p>
-            <button onClick={handleLogout}>Sign out</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setHostTab("listings")} disabled={hostTab === "listings"}>Listings</button>
+              <button onClick={() => setHostTab("bookings")} disabled={hostTab === "bookings"}>Bookings & metrics</button>
+            </div>
+            <div>
+              <span style={{ color: "#666", marginRight: 8 }}>{host.email}</span>
+              <button onClick={handleLogout}>Sign out</button>
+            </div>
           </div>
-          <Dashboard />
+          {hostTab === "listings" ? <Dashboard /> : <HostBookings />}
         </section>
       ) : (
         <Login onLoggedIn={setHost} />

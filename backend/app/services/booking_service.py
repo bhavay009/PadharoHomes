@@ -36,6 +36,44 @@ def get_booking(db: Session, booking_id: uuid.UUID) -> Booking | None:
     return db.get(Booking, booking_id)
 
 
+def get_host_booking(
+    db: Session, host_id: uuid.UUID, booking_id: uuid.UUID
+) -> Booking | None:
+    return db.scalars(
+        select(Booking).where(Booking.id == booking_id, Booking.host_id == host_id)
+    ).first()
+
+
+def list_host_bookings(
+    db: Session,
+    host_id: uuid.UUID,
+    *,
+    status: BookingStatus | None = None,
+    unit_id: uuid.UUID | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[Booking], int]:
+    from sqlalchemy import func
+
+    filters = [Booking.host_id == host_id]
+    if status is not None:
+        filters.append(Booking.status == status)
+    if unit_id is not None:
+        filters.append(Booking.unit_id == unit_id)
+
+    total = db.scalar(select(func.count()).select_from(Booking).where(*filters)) or 0
+    items = list(
+        db.scalars(
+            select(Booking)
+            .where(*filters)
+            .order_by(Booking.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        ).all()
+    )
+    return items, total
+
+
 def is_hold_active(booking: Booking) -> bool:
     return (
         booking.status == BookingStatus.pending
