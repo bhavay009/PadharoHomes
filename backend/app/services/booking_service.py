@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.booking import Booking, BookingStatus, Payment, PaymentStatus
 from app.models.unit import Unit
-from app.services import availability_service, pricing_service
+from app.services import availability_service, notifications, pricing_service
 from app.services.payments import get_gateway
 from app.services.payments.mock import PaymentError
 
@@ -182,6 +182,7 @@ def pay_deposit(db: Session, booking: Booking) -> Booking:
     booking.hold_expires_at = None
     db.commit()
     db.refresh(booking)
+    notifications.notify_booking_confirmed(db, booking)
     return booking
 
 
@@ -203,6 +204,7 @@ def cancel(db: Session, booking: Booking) -> Booking:
     # deposit_refunded stays False -> forfeited if a deposit was paid.
     db.commit()
     db.refresh(booking)
+    notifications.notify_booking_cancelled(db, booking)
     return booking
 
 
@@ -214,6 +216,7 @@ def check_in(db: Session, booking: Booking) -> Booking:
     booking.checked_in_at = _now()
     db.commit()
     db.refresh(booking)
+    notifications.notify_check_in(db, booking)
     return booking
 
 
