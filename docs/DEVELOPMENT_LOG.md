@@ -398,7 +398,7 @@ with a working test harness — and nothing faked.
 
 ## Phase 7 — Email notifications
 
-**Status:** ✅ COMPLETE (code + tests green) — ⚠️ pending live Resend verification (needs API key).
+**Status:** ✅ COMPLETE — code + tests green, live Resend delivery verified.
 
 ### Decisions (confirmed with user, not assumed)
 - **Provider:** Resend (real), behind an `EmailSender` interface with a console/capture dev adapter.
@@ -424,7 +424,13 @@ with a working test harness — and nothing faked.
   emails guest+host. Existing auth tests still pass (dev_otp via console adapter).
 - **Isolation check:** notification capture is in-memory and cleared per test; no DB rows persist.
 
-### Pending (carry-over)
-- ⚠️ **Live Resend delivery not yet verified** — needs `RESEND_API_KEY` + `EMAIL_FROM` and
-  `EMAIL_PROVIDER=resend` in `backend/.env`. Once set, OTP + lifecycle emails send for real and
-  OTP codes stop appearing in API responses. This is the only item to fully close Phase 7.
+### Live Resend verification (carry-over closed)
+- `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + `EMAIL_FROM` (`onboarding@resend.dev`) added to
+  `backend/.env` (gitignored); `email_real_configured` → True.
+- **Real send accepted by Resend** — message id `11339aae-bf45-4f5a-bf8e-d99cd9c33952` returned
+  (to the Resend account address; `onboarding@resend.dev` only delivers to the account owner in test mode).
+- **OTP now real:** with Resend on, `POST /auth/request-otp` returns `dev_otp: null`
+  ("a code has been sent") — the code is no longer leaked in the response.
+- **Test hermeticity:** added an autouse session fixture forcing the console adapter during
+  tests, so the suite never sends real email even with `EMAIL_PROVIDER=resend` in `.env`.
+  Full suite: `70 passed`.
