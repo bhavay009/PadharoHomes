@@ -52,6 +52,19 @@ class Settings(BaseSettings):
     # Rolling window (days) for the occupancy metric.
     occupancy_window_days: int = 30
 
+    # Email. provider: "console" (dev, logs/captures) | "resend".
+    email_provider: str = "console"
+    resend_api_key: str = ""
+    email_from: str = ""  # e.g. "Padharo Homes <bookings@yourdomain.com>"
+
+    @property
+    def email_real_configured(self) -> bool:
+        return (
+            self.email_provider.lower() == "resend"
+            and bool(self.resend_api_key.strip())
+            and bool(self.email_from.strip())
+        )
+
     @property
     def database_configured(self) -> bool:
         return bool(self.database_url.strip())

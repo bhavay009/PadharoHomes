@@ -24,7 +24,7 @@ from app.schemas.auth import (
     TokenOut,
     VerifyOtpIn,
 )
-from app.services import auth_service
+from app.services import auth_service, notifications
 
 logger = logging.getLogger("padharo.auth")
 
@@ -36,17 +36,18 @@ def request_otp(payload: RequestOtpIn, db: Session = Depends(get_db)) -> Request
     code = auth_service.issue_otp(db, payload.email)
     email = auth_service.normalize_email(payload.email)
 
-    if settings.is_production:
-        # Real delivery is wired in a later phase; until then, do not leak codes.
-        logger.info("OTP issued for %s (delivery provider not yet configured)", email)
-        return RequestOtpOut(detail="If the email is valid, a code has been sent.")
+    # Send the code through the configured email sender (Resend when configured,
+    # otherwise the console/dev adapter).
+    sent_via_dev = notifications.send_otp(email, code)
 
-    # Dev mode: surface the real code so the flow is fully testable without a provider.
-    logger.info("DEV OTP for %s: %s", email, code)
-    return RequestOtpOut(
-        detail="Dev mode: code returned in response (no email provider yet).",
-        dev_otp=code,
-    )
+    # Only surface the code in the response when delivery is via the dev adapter
+    # (no real provider) AND we are not in production.
+    if sent_via_dev and not settings.is_production:
+        return RequestOtpOut(
+            detail="Dev mode: code returned in response (no email provider configured).",
+            dev_otp=code,
+        )
+    return RequestOtpOut(detail="If the email is valid, a code has been sent.")
 
 
 @router.post("/verify-otp", response_model=TokenOut)

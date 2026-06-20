@@ -344,7 +344,7 @@ with a working test harness — and nothing faked.
 - **Isolation check:** post-suite all domain tables = 0 rows.
 - **Live smoke:** hold (deposit ₹600 / balance ₹2400, mock gateway) → overlapping 2nd guest 409
   → pay → confirmed (deposit_paid_at set) → those dates excluded from public browse. Cleaned up.
-- **Frontend build smoke:** `npm run build` ✓.
+- **Frontend build smoke:** `npm run build` ✓ (Phase 6).
 
 ### Deferred to Phase 6
 - Host-facing booking management endpoints (list bookings, check-in, complete + mark balance
@@ -393,3 +393,44 @@ with a working test harness — and nothing faked.
   commission ₹300 (15%); after complete(balance) → cash ₹2000 / outstanding ₹0 /
   completed count 1. Cleaned up.
 - **Frontend build smoke:** `npm run build` ✓.
+
+---
+
+## Phase 7 — Email notifications
+
+**Status:** ✅ COMPLETE — code + tests green, live Resend delivery verified.
+
+### Decisions (confirmed with user, not assumed)
+- **Provider:** Resend (real), behind an `EmailSender` interface with a console/capture dev adapter.
+- **Triggers:** booking confirmed (guest), check-in info (guest), host new-booking notification, cancellation (guest + host).
+- **OTP:** moves to real email when Resend is configured; falls back to dev-mode (code in response) while it is not.
+
+### Steps taken
+1. Branched `phase-7-email`. Added dep `resend`. Config: `EMAIL_PROVIDER`, `RESEND_API_KEY`,
+   `EMAIL_FROM` + `email_real_configured` property; documented in `.env.example`.
+2. Email package (`app/services/email/`): `EmailSender` Protocol + `EmailMessage`,
+   `ConsoleSender` (dev, logs + in-memory capture, `is_dev=True`), `ResendSender` (real),
+   `get_sender()` factory (Resend when configured, else console).
+3. `notifications.py`: `send_otp` (returns whether sent via dev sender), `notify_booking_confirmed`
+   (guest + host), `notify_check_in` (guest), `notify_booking_cancelled` (guest + host).
+   All sends best-effort (failures logged, never break the operation).
+4. Wired into `booking_service` (pay→confirmed, check_in, cancel) and `auth.request_otp`
+   (sends OTP via sender; only returns `dev_otp` when using the dev sender and not production).
+5. No migration. No frontend change (emails are server-side; on-screen booking confirmation already exists).
+
+### Test results
+- **Backend pytest:** `70 passed in 219s` (4 new in `test_notifications.py`, via console capture):
+  OTP email sent, booking-confirmed emails guest+host, check-in emails guest, cancellation
+  emails guest+host. Existing auth tests still pass (dev_otp via console adapter).
+- **Isolation check:** notification capture is in-memory and cleared per test; no DB rows persist.
+
+### Live Resend verification (carry-over closed)
+- `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + `EMAIL_FROM` (`onboarding@resend.dev`) added to
+  `backend/.env` (gitignored); `email_real_configured` → True.
+- **Real send accepted by Resend** — message id `11339aae-bf45-4f5a-bf8e-d99cd9c33952` returned
+  (to the Resend account address; `onboarding@resend.dev` only delivers to the account owner in test mode).
+- **OTP now real:** with Resend on, `POST /auth/request-otp` returns `dev_otp: null`
+  ("a code has been sent") — the code is no longer leaked in the response.
+- **Test hermeticity:** added an autouse session fixture forcing the console adapter during
+  tests, so the suite never sends real email even with `EMAIL_PROVIDER=resend` in `.env`.
+  Full suite: `70 passed`.

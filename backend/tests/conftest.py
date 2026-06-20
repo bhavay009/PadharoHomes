@@ -16,6 +16,18 @@ from app.core.database import get_db, get_engine
 from app.main import app
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _force_console_email():
+    """Tests must never send real email, regardless of .env. Force the console
+    (capture) adapter for the whole test session even if EMAIL_PROVIDER=resend."""
+    from app.core.config import settings
+
+    original = settings.email_provider
+    settings.email_provider = "console"
+    yield
+    settings.email_provider = original
+
+
 @pytest.fixture()
 def client() -> TestClient:
     """Plain client with no DB override (used by health/smoke tests)."""
