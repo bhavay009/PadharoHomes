@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { getMe, getToken, clearToken, API_URL } from "./api";
 import Login from "./Login";
 import Dashboard from "./Dashboard";
+import Storefront from "./Storefront";
 
 export default function App() {
+  const [mode, setMode] = useState("guest"); // "guest" | "host"
   const [host, setHost] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,12 +28,20 @@ export default function App() {
 
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem" }}>
-      <h1>Padharo Homes</h1>
-      <p style={{ color: "#666" }}>
-        Direct-booking platform · API <code>{API_URL}</code>
-      </p>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1 style={{ margin: 0 }}>Padharo Homes</h1>
+        <nav style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setMode("guest")}
+            disabled={mode === "guest"}>Browse stays</button>
+          <button onClick={() => setMode("host")}
+            disabled={mode === "host"}>Host</button>
+        </nav>
+      </header>
+      <p style={{ color: "#999", fontSize: 12 }}>API <code>{API_URL}</code></p>
 
-      {loading ? (
+      {mode === "guest" ? (
+        <Storefront />
+      ) : loading ? (
         <p>Loading…</p>
       ) : host ? (
         <section>

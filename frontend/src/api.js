@@ -59,6 +59,20 @@ export const deleteUnit = (id) =>
 export const bulkUpdateUnits = (body) =>
   request("/units/bulk", { method: "POST", body, auth: true });
 
+// ---- Public storefront (no auth) ----
+export function browseUnits(filters = {}) {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (v !== "" && v !== null && v !== undefined) p.set(k, v);
+  }
+  return request(`/public/units?${p.toString()}`);
+}
+export const getPublicUnit = (id) => request(`/public/units/${id}`);
+export function getPublicQuote(id, checkIn, checkOut) {
+  const p = new URLSearchParams({ check_in: checkIn, check_out: checkOut });
+  return request(`/public/units/${id}/quote?${p}`);
+}
+
 // ---- Availability & pricing ----
 export const listBlocks = (unitId) =>
   request(`/units/${unitId}/blocks`, { auth: true });
