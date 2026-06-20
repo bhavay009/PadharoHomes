@@ -288,3 +288,65 @@ with a working test harness — and nothing faked.
 - **Live smoke (no auth):** browse → published only (draft hidden); overlapping dates → 0;
   free dates → 1. Cleaned up.
 - **Frontend build smoke:** `npm run build` ✓.
+
+---
+
+## Phase 5 — Booking + deposit payment
+
+**Status:** ✅ COMPLETE — code + tests green, live verified (incl. concurrency).
+
+### Decisions (confirmed with user, not assumed)
+- **Payment gateway:** mock-for-now behind a real `PaymentGateway` interface. Nothing is
+  marked paid except through a gateway `confirm()`. Razorpay/Stripe adapters slot in later.
+- **Deposit flow:** **hold-then-pay** — a row-locked pending booking holds the dates, then the
+  deposit confirms it.
+
+### Design notes
+- **State machine:** `pending → confirmed → checked_in → completed`, plus `cancelled`,
+  `no_show`, `expired`. PRD "deposit_paid" = `confirmed` + `deposit_paid_at`; "balance_due" =
+  active booking with `balance_collected_at` null. (Documented in `app/models/booking.py`.)
+- **Hold:** pending booking with `hold_expires_at` (default 15 min). Availability treats a
+  pending hold as occupying dates only while unexpired.
+- **Availability now spans blocks AND bookings:** `is_available` and the public date-filter
+  exclude overlapping blocks plus active bookings (confirmed/checked_in/completed, or
+  unexpired pending). `pricing_service.quote` reflects this; `price_breakdown` was split out
+  so the locked booking path computes amounts without a redundant availability check.
+- **Cancellation policy (v1):** deposit non-refundable — cancelling/no-show on a paid booking
+  forfeits the deposit (`deposit_refunded` stays False); cancelling a pending hold just releases.
+
+### Steps taken
+1. Branched `phase-5-bookings`.
+2. Models (`app/models/booking.py`): `Booking` (guest details, dates, priced amounts, status,
+   hold/payment/lifecycle timestamps, `deposit_refunded`) and `Payment` (gateway, intent_id,
+   amount, status). Enums + `ACTIVE_BOOKING_STATUSES`.
+3. Payments package (`app/services/payments/`): `PaymentGateway` Protocol + `PaymentIntent`,
+   `MockGateway` (create/confirm), `get_gateway()` factory keyed by `settings.payment_gateway`.
+4. `booking_service.py`: `create_hold` (unit row-lock → price → availability → pending booking +
+   intent), `pay_deposit` (gateway confirm → confirmed), `cancel`, and host transitions
+   `check_in`/`complete`/`mark_no_show` with state guards.
+5. `availability_service`: shared `lock_unit`, `is_available` extended to bookings;
+   `pricing_service` split into `price_breakdown` + `quote`; `public_service` date-filter excludes
+   active bookings too.
+6. Guest routes on `/public`: `POST /units/{id}/bookings`, `GET/POST /bookings/{id}`,
+   `/pay`, `/cancel`.
+7. Migration `c1f663ff0223` (bookings, payments) applied to Neon.
+8. Frontend: `Booking.jsx` (details → hold → pay → confirmed), wired into the storefront detail
+   via "Book these dates"; public booking API client.
+
+### Test results
+- **Backend pytest:** `57 passed in 186s`:
+  - `test_bookings.py` (12): hold returns pending+intent (deposit math), pay→confirmed,
+    confirmed booking blocks dates in availability+browse, **active hold prevents double-booking
+    (409)**, can't pay twice, cancel-pending frees dates, **cancel-confirmed forfeits deposit**,
+    min-stay rejected, blocked-dates 409, get/404, full state-machine transitions + guards, no-show forfeit.
+  - `test_concurrency.py` (2): the Phase 3 block race **plus** a new **two-thread booking-hold
+    race → exactly one wins, one conflict; exactly 1 booking persisted.** Rows cleaned up.
+- **Isolation check:** post-suite all domain tables = 0 rows.
+- **Live smoke:** hold (deposit ₹600 / balance ₹2400, mock gateway) → overlapping 2nd guest 409
+  → pay → confirmed (deposit_paid_at set) → those dates excluded from public browse. Cleaned up.
+- **Frontend build smoke:** `npm run build` ✓.
+
+### Deferred to Phase 6
+- Host-facing booking management endpoints (list bookings, check-in, complete + mark balance
+  collected, no-show). The service logic + state machine are implemented and tested now; only
+  the host HTTP endpoints + dashboard UI remain.
