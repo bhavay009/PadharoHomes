@@ -8,13 +8,14 @@ Search rule (per product decision):
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.availability import AvailabilityBlock
+from app.models.booking import ACTIVE_BOOKING_STATUSES, Booking, BookingStatus
 from app.models.unit import Unit, UnitStatus
 
 
@@ -48,9 +49,9 @@ def list_published_units(
     if max_price is not None:
         filters.append(Unit.base_price <= max_price)
 
-    # Dates -> exclude units with an overlapping block (half-open overlap).
+    # Dates -> exclude units with an overlapping block OR active booking.
     if check_in is not None and check_out is not None:
-        overlapping = (
+        overlapping_block = (
             select(AvailabilityBlock.id)
             .where(
                 AvailabilityBlock.unit_id == Unit.id,
@@ -59,7 +60,25 @@ def list_published_units(
             )
             .correlate(Unit)
         )
-        filters.append(~exists(overlapping))
+        now = datetime.now(timezone.utc)
+        overlapping_booking = (
+            select(Booking.id)
+            .where(
+                Booking.unit_id == Unit.id,
+                Booking.check_in < check_out,
+                Booking.check_out > check_in,
+                or_(
+                    Booking.status.in_(ACTIVE_BOOKING_STATUSES),
+                    and_(
+                        Booking.status == BookingStatus.pending,
+                        Booking.hold_expires_at > now,
+                    ),
+                ),
+            )
+            .correlate(Unit)
+        )
+        filters.append(~exists(overlapping_block))
+        filters.append(~exists(overlapping_booking))
 
     total = db.scalar(select(func.count()).select_from(Unit).where(*filters)) or 0
     items = list(

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { browseUnits, getPublicQuote } from "./api";
+import Booking from "./Booking";
 
 // Guest-facing storefront: browse published units, filter by city/guests/price
 // and optional dates. With dates set, the API returns only available units.
@@ -90,6 +91,7 @@ export default function Storefront() {
 function Detail({ unit, dates, onBack }) {
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState(null);
+  const [booking, setBooking] = useState(false);
 
   useEffect(() => {
     if (dates.check_in && dates.check_out) {
@@ -98,6 +100,15 @@ function Detail({ unit, dates, onBack }) {
         .catch((e) => setError(e.message));
     }
   }, [unit.id, dates.check_in, dates.check_out]);
+
+  if (booking) {
+    return (
+      <section>
+        <button onClick={() => setBooking(false)}>← Back</button>
+        <Booking unit={unit} dates={dates} onDone={onBack} />
+      </section>
+    );
+  }
 
   return (
     <section>
@@ -124,7 +135,7 @@ function Detail({ unit, dates, onBack }) {
           <p>Subtotal: {quote.currency} {quote.subtotal}</p>
           <p>Pay now (deposit {quote.deposit_percent}%): <strong>{quote.deposit_due}</strong></p>
           <p>Pay at property: {quote.balance_due}</p>
-          <p style={{ color: "#999" }}>Booking arrives in the next phase.</p>
+          <button onClick={() => setBooking(true)}>Book these dates</button>
         </div>
       ) : (
         <p style={{ color: "#666" }}>Add check-in/check-out dates on the search page to see a price quote.</p>

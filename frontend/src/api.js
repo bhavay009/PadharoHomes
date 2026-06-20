@@ -72,6 +72,14 @@ export function getPublicQuote(id, checkIn, checkOut) {
   const p = new URLSearchParams({ check_in: checkIn, check_out: checkOut });
   return request(`/public/units/${id}/quote?${p}`);
 }
+export const createBooking = (unitId, body) =>
+  request(`/public/units/${unitId}/bookings`, { method: "POST", body });
+export const payBooking = (bookingId) =>
+  request(`/public/bookings/${bookingId}/pay`, { method: "POST" });
+export const cancelBooking = (bookingId) =>
+  request(`/public/bookings/${bookingId}/cancel`, { method: "POST" });
+export const getBooking = (bookingId) =>
+  request(`/public/bookings/${bookingId}`);
 
 // ---- Availability & pricing ----
 export const listBlocks = (unitId) =>

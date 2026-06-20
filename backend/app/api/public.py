@@ -14,8 +14,19 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.availability import AvailabilityOut, CalendarDayOut, QuoteOut
+from app.schemas.booking import (
+    BookingCreate,
+    BookingCreateOut,
+    BookingOut,
+    PaymentIntentOut,
+)
 from app.schemas.public import PublicUnitListOut, PublicUnitOut
-from app.services import availability_service, pricing_service, public_service
+from app.services import (
+    availability_service,
+    booking_service,
+    pricing_service,
+    public_service,
+)
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -116,3 +127,78 @@ def unit_calendar(
         return pricing_service.calendar(db, unit, start, end)
     except pricing_service.QuoteError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# ---- Guest bookings (hold-then-pay) ----
+@router.post(
+    "/units/{unit_id}/bookings",
+    response_model=BookingCreateOut,
+    status_code=201,
+)
+def create_booking(
+    unit_id: uuid.UUID,
+    payload: BookingCreate,
+    db: Session = Depends(get_db),
+) -> BookingCreateOut:
+    unit = _get_published_or_404(db, unit_id)
+    try:
+        booking, payment, client = booking_service.create_hold(
+            db,
+            unit,
+            guest_name=payload.guest_name,
+            guest_email=payload.guest_email,
+            guest_phone=payload.guest_phone,
+            check_in=payload.check_in,
+            check_out=payload.check_out,
+        )
+        db.commit()
+        db.refresh(booking)
+    except booking_service.BookingUnavailableError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except booking_service.BookingError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return BookingCreateOut(
+        booking=BookingOut.model_validate(booking),
+        payment=PaymentIntentOut(
+            intent_id=payment.intent_id,
+            gateway=payment.gateway,
+            amount=payment.amount,
+            currency=payment.currency,
+            client=client,
+        ),
+    )
+
+
+def _get_booking_or_404(db: Session, booking_id: uuid.UUID):
+    booking = booking_service.get_booking(db, booking_id)
+    if booking is None:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    return booking
+
+
+@router.get("/bookings/{booking_id}", response_model=BookingOut)
+def get_booking(booking_id: uuid.UUID, db: Session = Depends(get_db)) -> BookingOut:
+    return BookingOut.model_validate(_get_booking_or_404(db, booking_id))
+
+
+@router.post("/bookings/{booking_id}/pay", response_model=BookingOut)
+def pay_booking(booking_id: uuid.UUID, db: Session = Depends(get_db)) -> BookingOut:
+    booking = _get_booking_or_404(db, booking_id)
+    try:
+        booking = booking_service.pay_deposit(db, booking)
+    except booking_service.BookingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return BookingOut.model_validate(booking)
+
+
+@router.post("/bookings/{booking_id}/cancel", response_model=BookingOut)
+def cancel_booking(booking_id: uuid.UUID, db: Session = Depends(get_db)) -> BookingOut:
+    booking = _get_booking_or_404(db, booking_id)
+    try:
+        booking = booking_service.cancel(db, booking)
+    except booking_service.BookingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return BookingOut.model_validate(booking)

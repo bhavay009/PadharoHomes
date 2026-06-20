@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # Default currency for listings.
     default_currency: str = "INR"
 
+    # Bookings / payments
+    booking_hold_minutes: int = 15
+    # Active payment gateway: "mock" | "razorpay" | "stripe" (only "mock" wired now).
+    payment_gateway: str = "mock"
+
     @property
     def database_configured(self) -> bool:
         return bool(self.database_url.strip())

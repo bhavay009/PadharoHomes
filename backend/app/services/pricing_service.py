@@ -98,16 +98,14 @@ def _daterange(start: date, end: date):
         d += timedelta(days=1)
 
 
-def quote(db: Session, unit: Unit, check_in: date, check_out: date) -> dict:
+def price_breakdown(db: Session, unit: Unit, check_in: date, check_out: date) -> dict:
+    """Compute the priced breakdown for a stay. Validates the range and min-stay
+    but does NOT check availability (callers that already hold a lock use this)."""
     if check_out <= check_in:
         raise QuoteError("check_out must be after check_in.")
     nights = (check_out - check_in).days
     if nights < unit.min_stay_nights:
-        raise QuoteError(
-            f"Minimum stay is {unit.min_stay_nights} night(s)."
-        )
-    if not availability_service.is_available(db, unit.id, check_in, check_out):
-        raise QuoteError("Selected dates are not available.")
+        raise QuoteError(f"Minimum stay is {unit.min_stay_nights} night(s).")
 
     rates = list_rates(db, unit.id)
     nightly = []
@@ -124,6 +122,7 @@ def quote(db: Session, unit: Unit, check_in: date, check_out: date) -> dict:
             }
         )
 
+    subtotal = subtotal.quantize(_CENTS)
     deposit_due = (subtotal * unit.deposit_percent / Decimal("100")).quantize(_CENTS)
     balance_due = (subtotal - deposit_due).quantize(_CENTS)
     return {
@@ -132,11 +131,19 @@ def quote(db: Session, unit: Unit, check_in: date, check_out: date) -> dict:
         "nights": nights,
         "currency": unit.currency,
         "nightly": nightly,
-        "subtotal": subtotal.quantize(_CENTS),
+        "subtotal": subtotal,
         "deposit_percent": unit.deposit_percent,
         "deposit_due": deposit_due,
         "balance_due": balance_due,
     }
+
+
+def quote(db: Session, unit: Unit, check_in: date, check_out: date) -> dict:
+    """Public/host quote — same as the breakdown but also requires availability."""
+    breakdown = price_breakdown(db, unit, check_in, check_out)
+    if not availability_service.is_available(db, unit.id, check_in, check_out):
+        raise QuoteError("Selected dates are not available.")
+    return breakdown
 
 
 def calendar(db: Session, unit: Unit, start: date, end: date) -> list[dict]:
