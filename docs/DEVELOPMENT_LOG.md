@@ -254,3 +254,37 @@ with a working test harness — and nothing faked.
 - **Live smoke:** block → availability=false over blocked range → Saturday quote applied the
   **weekend** price (₹1500) with deposit ₹300 / balance ₹1200. Cleaned up.
 - **Frontend build smoke:** `npm run build` ✓.
+
+---
+
+## Phase 4 — Guest browsing & search
+
+**Status:** ✅ COMPLETE — code + tests green, live verified.
+
+### Decisions (confirmed with user, not assumed)
+- **No dates → show all published units** (browse the whole portfolio).
+- **Dates given → show only units available** for those nights (exclude blocked).
+  (Phase 5 will extend the same availability check to also exclude booked dates.)
+
+### Steps taken
+1. Branched `phase-4-storefront` (Phase 3 merged to `main`).
+2. `app/schemas/public.py`: `PublicUnitOut` (no host_id/status leaked) + list schema.
+3. `app/services/public_service.py`: `list_published_units` (filters: city, guests≥capacity,
+   min/max base_price; dates → `NOT EXISTS` overlapping-block subquery) and
+   `get_published_unit` (published only).
+4. `app/api/public.py` (no-auth `/public`): `GET /units` (browse/search),
+   `GET /units/{id}` (detail, 404 if not published), `GET /units/{id}/availability`,
+   `/quote`, `/calendar` — quote/calendar reuse the Phase 3 pricing/availability services.
+   Single-date guard (both or neither).
+5. No migration (no schema change).
+6. Frontend: `Storefront.jsx` (browse grid + filters + detail with quote), public API client,
+   and an App-level **guest/host toggle** (guests land on the storefront by default).
+
+### Test results
+- **Backend pytest:** `44 passed in 93s` (6 new in `test_public.py`):
+  only-published browse (+ no host fields leaked), city/guests/price filters,
+  **dates exclude blocked units** (and non-overlapping dates include them), single-date 400,
+  detail 404-draft/200-published, public quote+availability (blocked → 400).
+- **Live smoke (no auth):** browse → published only (draft hidden); overlapping dates → 0;
+  free dates → 1. Cleaned up.
+- **Frontend build smoke:** `npm run build` ✓.

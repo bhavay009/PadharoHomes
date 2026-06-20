@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.availability import router as availability_router
 from app.api.health import router as health_router
+from app.api.public import router as public_router
 from app.api.units import router as units_router
 
 app = FastAPI(title="Padharo Homes API", version="0.1.0")
@@ -24,3 +25,4 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(units_router)
 app.include_router(availability_router)
+app.include_router(public_router)
