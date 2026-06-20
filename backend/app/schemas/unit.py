@@ -32,10 +32,14 @@ class UnitBase(BaseModel):
     amenities: list[str] = Field(default_factory=list)
     house_rules: str | None = None
     base_price: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    weekend_price: Decimal | None = Field(
+        default=None, gt=0, max_digits=10, decimal_places=2
+    )
     deposit_percent: Decimal = Field(
         default=Decimal("0"), ge=0, le=100, max_digits=5, decimal_places=2
     )
     currency: str = Field(default="INR", min_length=3, max_length=3)
+    min_stay_nights: int = Field(default=1, ge=1)
 
     @field_validator("amenities")
     @classmethod
@@ -65,10 +69,14 @@ class UnitUpdate(BaseModel):
     base_price: Decimal | None = Field(
         default=None, gt=0, max_digits=10, decimal_places=2
     )
+    weekend_price: Decimal | None = Field(
+        default=None, gt=0, max_digits=10, decimal_places=2
+    )
     deposit_percent: Decimal | None = Field(
         default=None, ge=0, le=100, max_digits=5, decimal_places=2
     )
     currency: str | None = Field(default=None, min_length=3, max_length=3)
+    min_stay_nights: int | None = Field(default=None, ge=1)
     status: UnitStatus | None = None
 
 

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { listUnits, deleteUnit } from "./api";
 import UnitForm from "./UnitForm";
+import UnitCalendar from "./UnitCalendar";
 
 export default function Dashboard() {
   const [units, setUnits] = useState([]);
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({ q: "", city: "", status: "" });
   const [editing, setEditing] = useState(undefined); // undefined=none, null=new, obj=edit
+  const [calendarUnit, setCalendarUnit] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,6 +34,10 @@ export default function Dashboard() {
     if (!confirm("Delete this unit?")) return;
     await deleteUnit(id);
     load();
+  }
+
+  if (calendarUnit) {
+    return <UnitCalendar unit={calendarUnit} onBack={() => setCalendarUnit(null)} />;
   }
 
   if (editing !== undefined) {
@@ -90,6 +96,7 @@ export default function Dashboard() {
                 <td>{u.photos?.length ?? 0}</td>
                 <td>
                   <button onClick={() => setEditing(u)}>Edit</button>{" "}
+                  <button onClick={() => setCalendarUnit(u)}>Calendar</button>{" "}
                   <button onClick={() => handleDelete(u.id)}>Delete</button>
                 </td>
               </tr>

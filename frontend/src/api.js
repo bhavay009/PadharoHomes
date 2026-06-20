@@ -59,6 +59,30 @@ export const deleteUnit = (id) =>
 export const bulkUpdateUnits = (body) =>
   request("/units/bulk", { method: "POST", body, auth: true });
 
+// ---- Availability & pricing ----
+export const listBlocks = (unitId) =>
+  request(`/units/${unitId}/blocks`, { auth: true });
+export const createBlock = (unitId, body) =>
+  request(`/units/${unitId}/blocks`, { method: "POST", body, auth: true });
+export const deleteBlock = (unitId, blockId) =>
+  request(`/units/${unitId}/blocks/${blockId}`, { method: "DELETE", auth: true });
+
+export const listRates = (unitId) =>
+  request(`/units/${unitId}/rates`, { auth: true });
+export const createRate = (unitId, body) =>
+  request(`/units/${unitId}/rates`, { method: "POST", body, auth: true });
+export const deleteRate = (unitId, rateId) =>
+  request(`/units/${unitId}/rates/${rateId}`, { method: "DELETE", auth: true });
+
+export function getQuote(unitId, checkIn, checkOut) {
+  const p = new URLSearchParams({ check_in: checkIn, check_out: checkOut });
+  return request(`/units/${unitId}/quote?${p}`, { auth: true });
+}
+export function getCalendar(unitId, start, end) {
+  const p = new URLSearchParams({ start, end });
+  return request(`/units/${unitId}/calendar?${p}`, { auth: true });
+}
+
 export async function uploadPhoto(unitId, file) {
   const form = new FormData();
   form.append("file", file);

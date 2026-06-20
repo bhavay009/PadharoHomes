@@ -66,10 +66,17 @@ class Unit(Base):
     house_rules: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    # Optional override applied to Saturday/Sunday nights when set.
+    weekend_price: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
     deposit_percent: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False, default=Decimal("0")
     )
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
+    min_stay_nights: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1
+    )
 
     status: Mapped[UnitStatus] = mapped_column(
         SAEnum(UnitStatus, name="unit_status"),
