@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     # Comma-separated emails granted admin access.
     admin_emails: str = ""
 
+    # Comma-separated allowed CORS origins (the deployed frontend URL goes here).
+    cors_origins: str = "http://localhost:5173"
+
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() in {"production", "prod"}
@@ -90,6 +93,10 @@ class Settings(BaseSettings):
     @property
     def admin_email_set(self) -> set[str]:
         return {e.strip().lower() for e in self.admin_emails.split(",") if e.strip()}
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 settings = Settings()

@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import settings
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.availability import router as availability_router
@@ -16,10 +17,11 @@ from app.api.units import router as units_router
 
 app = FastAPI(title="Padharo Homes API", version="0.1.0")
 
-# Allow the Vite dev server to call the API during development.
+# Allowed origins come from CORS_ORIGINS env (dev default = the Vite dev server).
+# Set this to your deployed frontend URL(s), comma-separated, in production.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
