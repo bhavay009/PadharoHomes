@@ -25,12 +25,19 @@ def _safe_send(message: EmailMessage) -> None:
         logger.exception("Failed to send email to %s", message.to)
 
 
-def send_otp(email: str, code: str) -> bool:
-    """Send a login OTP. Returns True if delivered via a *dev* sender (so the
-    caller may surface the code), False if sent through a real provider."""
+def send_otp(identifier: str, code: str, channel: str = "email") -> bool:
+    """Send a login OTP via email or SMS. Returns True if delivered via a *dev*
+    channel (so the caller may surface the code), False if a real provider sent it.
+
+    No SMS provider is wired yet, so phone OTPs always run in dev mode.
+    """
+    if channel == "phone":
+        logger.info("DEV SMS OTP for %s: %s (no SMS provider configured)", identifier, code)
+        return True
+
     sender = get_sender()
     msg = EmailMessage(
-        to=email,
+        to=identifier,
         subject="Your Padharo Homes login code",
         text=f"Your login code is {code}. It expires shortly.",
         html=f"<p>Your login code is <strong>{code}</strong>.</p>",
@@ -38,7 +45,7 @@ def send_otp(email: str, code: str) -> bool:
     try:
         sender.send(msg)
     except Exception:  # pragma: no cover
-        logger.exception("Failed to send OTP email to %s", email)
+        logger.exception("Failed to send OTP email to %s", identifier)
     return getattr(sender, "is_dev", False)
 
 

@@ -17,14 +17,27 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.availability import AvailabilityBlock
 from app.models.booking import ACTIVE_BOOKING_STATUSES, Booking, BookingStatus
 from app.models.unit import Unit, UnitStatus
+from app.services import review_service
+
+
+def _attach_ratings(db: Session, units: list[Unit]) -> None:
+    """Attach transient .rating / .review_count to each unit for serialization."""
+    ratings = review_service.ratings_for_units(db, [u.id for u in units])
+    for u in units:
+        avg, count = ratings.get(u.id, (None, 0))
+        u.rating = avg
+        u.review_count = count
 
 
 def get_published_unit(db: Session, unit_id: uuid.UUID) -> Unit | None:
-    return db.scalars(
+    unit = db.scalars(
         select(Unit)
         .options(selectinload(Unit.photos))
         .where(Unit.id == unit_id, Unit.status == UnitStatus.published)
     ).first()
+    if unit is not None:
+        _attach_ratings(db, [unit])
+    return unit
 
 
 def list_published_units(
@@ -41,7 +54,8 @@ def list_published_units(
 ) -> tuple[list[Unit], int]:
     filters = [Unit.status == UnitStatus.published]
     if city:
-        filters.append(func.lower(Unit.city) == city.strip().lower())
+        # Partial, case-insensitive match so "goa" / "north goa" both work.
+        filters.append(func.lower(Unit.city).like(f"%{city.strip().lower()}%"))
     if guests:
         filters.append(Unit.capacity >= guests)
     if min_price is not None:
@@ -91,4 +105,5 @@ def list_published_units(
             .offset(offset)
         ).all()
     )
+    _attach_ratings(db, items)
     return items, total

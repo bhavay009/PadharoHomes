@@ -16,7 +16,7 @@ from app.schemas.booking import (
     DashboardMetricsOut,
     HostBookingListOut,
 )
-from app.services import booking_service, metrics_service
+from app.services import booking_service, metrics_service, review_service
 
 router = APIRouter(tags=["host-bookings"])
 
@@ -108,6 +108,26 @@ def host_cancel(
     host: Host = Depends(get_current_host),
 ):
     return _transition(db, host, booking_id, booking_service.cancel)
+
+
+@router.get("/trips", response_model=HostBookingListOut)
+def my_trips(
+    db: Session = Depends(get_db),
+    host: Host = Depends(get_current_host),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> HostBookingListOut:
+    """Bookings the logged-in user made as a guest, matched by their email."""
+    items, total = booking_service.list_guest_bookings(
+        db, host.email, limit=limit, offset=offset
+    )
+    reviewed = review_service.reviewed_booking_ids(db, [b.id for b in items])
+    out = []
+    for b in items:
+        bo = BookingOut.model_validate(b)
+        bo.reviewed = b.id in reviewed
+        out.append(bo)
+    return HostBookingListOut(items=out, total=total, limit=limit, offset=offset)
 
 
 @router.get("/dashboard/metrics", response_model=DashboardMetricsOut)

@@ -44,6 +44,31 @@ def get_host_booking(
     ).first()
 
 
+def list_guest_bookings(
+    db: Session,
+    guest_email: str,
+    *,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[Booking], int]:
+    """Bookings the given email made as a guest (their trips)."""
+    from sqlalchemy import func
+
+    email = guest_email.strip().lower()
+    filters = [Booking.guest_email == email]
+    total = db.scalar(select(func.count()).select_from(Booking).where(*filters)) or 0
+    items = list(
+        db.scalars(
+            select(Booking)
+            .where(*filters)
+            .order_by(Booking.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        ).all()
+    )
+    return items, total
+
+
 def list_host_bookings(
     db: Session,
     host_id: uuid.UUID,

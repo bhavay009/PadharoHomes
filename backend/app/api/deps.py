@@ -8,6 +8,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.host import Host
@@ -38,4 +39,16 @@ def get_current_host(
     host = db.get(Host, host_id)
     if host is None or not host.is_active:
         raise _CREDENTIALS_EXC
+    return host
+
+
+def is_admin(host: Host) -> bool:
+    return host.email in settings.admin_email_set
+
+
+def get_current_admin(host: Host = Depends(get_current_host)) -> Host:
+    if not is_admin(host):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required."
+        )
     return host

@@ -13,6 +13,7 @@ from app.models.booking import (
 )
 from app.models.host import Host
 from app.models.otp import OtpCode
+from app.models.review import Review
 from app.models.unit import Unit, UnitPhoto, UnitStatus
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "Payment",
     "PaymentStatus",
     "ACTIVE_BOOKING_STATUSES",
+    "Review",
 ]

@@ -43,6 +43,8 @@ class BookingOut(BaseModel):
     deposit_paid_at: datetime | None
     balance_collected_at: datetime | None
     created_at: datetime
+    # Populated only on the /trips endpoint: whether the guest has reviewed it.
+    reviewed: bool | None = None
 
     model_config = {"from_attributes": True}
 

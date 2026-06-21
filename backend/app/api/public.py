@@ -13,7 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.host import Host
 from app.schemas.availability import AvailabilityOut, CalendarDayOut, QuoteOut
+from app.schemas.profile import PublicHostOut
 from app.schemas.booking import (
     BookingCreate,
     BookingCreateOut,
@@ -21,11 +23,13 @@ from app.schemas.booking import (
     PaymentIntentOut,
 )
 from app.schemas.public import PublicUnitListOut, PublicUnitOut
+from app.schemas.review import ReviewListOut, ReviewOut
 from app.services import (
     availability_service,
     booking_service,
     pricing_service,
     public_service,
+    review_service,
 )
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -113,6 +117,38 @@ def unit_quote(
         return pricing_service.quote(db, unit, check_in, check_out)
     except pricing_service.QuoteError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/units/{unit_id}/host", response_model=PublicHostOut)
+def unit_host(unit_id: uuid.UUID, db: Session = Depends(get_db)) -> PublicHostOut:
+    unit = _get_published_or_404(db, unit_id)
+    host = db.get(Host, unit.host_id)
+    return PublicHostOut(
+        name=(host.full_name or (host.email.split("@")[0] if host.email else "Host")),
+        avatar_url=host.avatar_url,
+        bio=host.bio,
+        languages=host.languages or [],
+        response_time=host.response_time,
+        member_since=host.created_at,
+    )
+
+
+@router.get("/units/{unit_id}/reviews", response_model=ReviewListOut)
+def unit_reviews(
+    unit_id: uuid.UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> ReviewListOut:
+    _get_published_or_404(db, unit_id)
+    items, total = review_service.list_unit_reviews(db, unit_id, limit=limit, offset=offset)
+    average, count = review_service.rating_for_unit(db, unit_id)
+    return ReviewListOut(
+        items=[ReviewOut.model_validate(r) for r in items],
+        total=total,
+        average=average,
+        count=count,
+    )
 
 
 @router.get("/units/{unit_id}/calendar", response_model=list[CalendarDayOut])

@@ -5,6 +5,13 @@ public API with no credentials. Transaction-isolated against the real DB.
 """
 from __future__ import annotations
 
+import uuid
+
+
+def _city() -> str:
+    """A unique city so assertions are isolated from other data in the DB."""
+    return f"Testville{uuid.uuid4().hex[:10]}"
+
 
 def _create_unit(client, headers, *, publish=False, **over):
     payload = {
@@ -24,10 +31,11 @@ def _create_unit(client, headers, *, publish=False, **over):
 
 def test_browse_shows_only_published(client_db, host_auth):
     h = host_auth["headers"]
-    _create_unit(client_db, h, title="Draft one")  # draft
-    _create_unit(client_db, h, title="Live one", publish=True)
+    city = _city()
+    _create_unit(client_db, h, title="Draft one", city=city)  # draft
+    _create_unit(client_db, h, title="Live one", city=city, publish=True)
 
-    res = client_db.get("/public/units").json()
+    res = client_db.get("/public/units", params={"city": city}).json()
     assert res["total"] == 1
     assert res["items"][0]["title"] == "Live one"
     # Public payload must not leak host-internal fields.
@@ -37,19 +45,24 @@ def test_browse_shows_only_published(client_db, host_auth):
 
 def test_filter_by_city_guests_and_price(client_db, host_auth):
     h = host_auth["headers"]
-    _create_unit(client_db, h, city="Jaipur", capacity=2, base_price="1000.00", publish=True)
-    _create_unit(client_db, h, city="Udaipur", capacity=6, base_price="3000.00", publish=True)
+    city = _city()
+    _create_unit(client_db, h, city=city, capacity=2, base_price="1000.00", publish=True)
+    _create_unit(client_db, h, city=city, capacity=6, base_price="3000.00", publish=True)
 
-    assert client_db.get("/public/units", params={"city": "jaipur"}).json()["total"] == 1
-    assert client_db.get("/public/units", params={"guests": 5}).json()["total"] == 1
-    assert client_db.get("/public/units", params={"max_price": "1500"}).json()["total"] == 1
-    assert client_db.get("/public/units", params={"min_price": "2000"}).json()["total"] == 1
+    base = {"city": city}
+    assert client_db.get("/public/units", params=base).json()["total"] == 2
+    # Partial, case-insensitive location search works too.
+    assert client_db.get("/public/units", params={"city": city[:8].lower()}).json()["total"] == 2
+    assert client_db.get("/public/units", params={**base, "guests": 5}).json()["total"] == 1
+    assert client_db.get("/public/units", params={**base, "max_price": "1500"}).json()["total"] == 1
+    assert client_db.get("/public/units", params={**base, "min_price": "2000"}).json()["total"] == 1
 
 
 def test_dates_filter_excludes_blocked_units(client_db, host_auth):
     h = host_auth["headers"]
-    free = _create_unit(client_db, h, title="Free", publish=True)
-    blocked = _create_unit(client_db, h, title="Blocked", publish=True)
+    city = _city()
+    free = _create_unit(client_db, h, title="Free", city=city, publish=True)
+    blocked = _create_unit(client_db, h, title="Blocked", city=city, publish=True)
     client_db.post(
         f"/units/{blocked['id']}/blocks",
         json={"start_date": "2026-11-10", "end_date": "2026-11-15"},
@@ -57,12 +70,12 @@ def test_dates_filter_excludes_blocked_units(client_db, host_auth):
     )
 
     # No dates -> both published units show.
-    assert client_db.get("/public/units").json()["total"] == 2
+    assert client_db.get("/public/units", params={"city": city}).json()["total"] == 2
 
     # Overlapping dates -> only the free unit shows.
     res = client_db.get(
         "/public/units",
-        params={"check_in": "2026-11-12", "check_out": "2026-11-14"},
+        params={"city": city, "check_in": "2026-11-12", "check_out": "2026-11-14"},
     ).json()
     assert res["total"] == 1
     assert res["items"][0]["id"] == free["id"]
@@ -70,7 +83,7 @@ def test_dates_filter_excludes_blocked_units(client_db, host_auth):
     # Non-overlapping dates -> both show again.
     res2 = client_db.get(
         "/public/units",
-        params={"check_in": "2026-12-01", "check_out": "2026-12-03"},
+        params={"city": city, "check_in": "2026-12-01", "check_out": "2026-12-03"},
     ).json()
     assert res2["total"] == 2
 

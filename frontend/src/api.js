@@ -33,10 +33,11 @@ async function request(path, { method = "GET", body, auth = false } = {}) {
 }
 
 export const getHealth = () => request("/health");
-export const requestOtp = (email) =>
-  request("/auth/request-otp", { method: "POST", body: { email } });
-export const verifyOtp = (email, code) =>
-  request("/auth/verify-otp", { method: "POST", body: { email, code } });
+// `id` is { email } or { phone }.
+export const requestOtp = (id) =>
+  request("/auth/request-otp", { method: "POST", body: id });
+export const verifyOtp = (id, code) =>
+  request("/auth/verify-otp", { method: "POST", body: { ...id, code } });
 export const getMe = () => request("/auth/me", { auth: true });
 
 // ---- Units ----
@@ -74,6 +75,10 @@ export function getPublicQuote(id, checkIn, checkOut) {
 }
 export const createBooking = (unitId, body) =>
   request(`/public/units/${unitId}/bookings`, { method: "POST", body });
+export const getUnitReviews = (unitId) =>
+  request(`/public/units/${unitId}/reviews`);
+export const createReview = (body) =>
+  request("/reviews", { method: "POST", body, auth: true });
 export const payBooking = (bookingId) =>
   request(`/public/bookings/${bookingId}/pay`, { method: "POST" });
 export const cancelBooking = (bookingId) =>
@@ -123,6 +128,36 @@ export const noShowBooking = (id) =>
 export const hostCancelBooking = (id) =>
   request(`/bookings/${id}/cancel`, { method: "POST", auth: true });
 export const getMetrics = () => request("/dashboard/metrics", { auth: true });
+export const getTrips = () => request("/trips", { auth: true });
+
+// ---- Admin ----
+export const adminStats = () => request("/admin/stats", { auth: true });
+export const adminHosts = () => request("/admin/hosts", { auth: true });
+export const adminUnits = (status) =>
+  request(`/admin/units${status ? `?status=${status}` : ""}`, { auth: true });
+export const adminBookings = () => request("/admin/bookings", { auth: true });
+export const adminReviews = () => request("/admin/reviews", { auth: true });
+export const adminSetUnitStatus = (id, status) =>
+  request(`/admin/units/${id}/status?status=${status}`, { method: "PATCH", auth: true });
+export const adminDeleteReview = (id) =>
+  request(`/admin/reviews/${id}`, { method: "DELETE", auth: true });
+
+// ---- Host profile ----
+export const getProfile = () => request("/me/profile", { auth: true });
+export const updateProfile = (body) =>
+  request("/me/profile", { method: "PATCH", body, auth: true });
+export const getUnitHost = (unitId) => request(`/public/units/${unitId}/host`);
+export async function uploadAvatar(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const headers = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_URL}/me/avatar`, { method: "POST", headers, body: form });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `Upload failed: ${res.status}`);
+  return data;
+}
 
 export async function uploadPhoto(unitId, file) {
   const form = new FormData();

@@ -12,6 +12,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum as SAEnum,
     ForeignKey,
@@ -47,17 +48,23 @@ class Unit(Base):
     )
 
     title: Mapped[str] = mapped_column(String(200), nullable=False)
+    property_type: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="apartment", server_default="apartment"
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Location attributes (city indexed for guest filtering in later phases).
+    # Location attributes (city indexed for guest filtering).
     address_line: Mapped[str | None] = mapped_column(String(300), nullable=True)
     city: Mapped[str] = mapped_column(String(120), index=True, nullable=False)
     state: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country: Mapped[str] = mapped_column(String(120), nullable=False, default="India")
     pincode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
+    longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
 
     capacity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     bedrooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    beds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bathrooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     amenities: Mapped[list[str]] = mapped_column(
@@ -74,9 +81,50 @@ class Unit(Base):
         Numeric(5, 2), nullable=False, default=Decimal("0")
     )
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
-    min_stay_nights: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1
+    cleaning_fee: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    service_fee: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    security_deposit: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True
     )
+    taxes_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    weekly_discount_percent: Mapped[Decimal | None] = mapped_column(
+        Numeric(5, 2), nullable=True
+    )
+    monthly_discount_percent: Mapped[Decimal | None] = mapped_column(
+        Numeric(5, 2), nullable=True
+    )
+
+    min_stay_nights: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    max_stay_nights: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    instant_book: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
+    # House rules
+    check_in_time: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    check_out_time: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    pets_allowed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    smoking_allowed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    parties_allowed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    quiet_hours: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Safety
+    smoke_alarm: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    fire_extinguisher: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    first_aid_kit: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    emergency_contact: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     status: Mapped[UnitStatus] = mapped_column(
         SAEnum(UnitStatus, name="unit_status"),

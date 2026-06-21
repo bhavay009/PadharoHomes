@@ -101,3 +101,19 @@ def get_or_create_host(db: Session, email: str) -> Host:
         db.commit()
         db.refresh(host)
     return host
+
+
+def normalize_phone(phone: str) -> str:
+    return phone.strip().replace(" ", "")
+
+
+def get_or_create_host_by_phone(db: Session, phone: str) -> Host:
+    """Return the host for this phone, creating one on first successful login."""
+    phone = normalize_phone(phone)
+    host = db.scalars(select(Host).where(Host.phone == phone)).first()
+    if host is None:
+        host = Host(phone=phone)
+        db.add(host)
+        db.commit()
+        db.refresh(host)
+    return host

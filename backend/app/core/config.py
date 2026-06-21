@@ -80,9 +80,16 @@ class Settings(BaseSettings):
             )
         )
 
+    # Comma-separated emails granted admin access.
+    admin_emails: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() in {"production", "prod"}
+
+    @property
+    def admin_email_set(self) -> set[str]:
+        return {e.strip().lower() for e in self.admin_emails.split(",") if e.strip()}
 
 
 settings = Settings()
