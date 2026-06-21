@@ -1,0 +1,38 @@
+# Render blueprint for the Padharo Homes FastAPI backend.
+# Deploy: render.com -> New -> Blueprint -> connect this repo -> fill the secret
+# env vars (marked sync:false) in the dashboard -> Apply.
+services:
+  - type: web
+    name: padharo-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Apply DB migrations on every deploy (idempotent — no-op if up to date).
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: APP_ENV
+        value: development
+      # Keep console so the login OTP code shows on screen (no email provider needed).
+      - key: EMAIL_PROVIDER
+        value: console
+      # --- Set these as secrets in the Render dashboard ---
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      # Your deployed frontend origin, e.g. https://padharo-homes.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
