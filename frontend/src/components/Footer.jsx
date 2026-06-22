@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Mail, Phone, MapPin, Globe, AtSign, Send, MessageCircle, Apple, Play } from "lucide-react";
 import Logo from "./Logo";
 
@@ -8,6 +9,18 @@ const COLS = [
 ];
 
 const PAYMENTS = ["Visa", "Mastercard", "Amex", "PayPal"];
+
+// Map known labels to real routes; everything else stays a placeholder link.
+const ROUTES = {
+  "Terms of Service": "/terms", "Privacy Policy": "/privacy",
+  Terms: "/terms", Privacy: "/privacy",
+};
+function FootLink({ label, className }) {
+  const to = ROUTES[label];
+  return to
+    ? <Link to={to} className={className}>{label}</Link>
+    : <a href="#" className={className}>{label}</a>;
+}
 
 export default function Footer() {
   return (
@@ -32,7 +45,7 @@ export default function Footer() {
             <h4 className="text-xs font-bold uppercase tracking-wider text-brand-600">{col.title}</h4>
             <ul className="mt-4 space-y-2.5">
               {col.links.map((l) => (
-                <li key={l}><a href="#" className="text-sm text-muted transition-colors hover:text-brand-500">{l}</a></li>
+                <li key={l}><FootLink label={l} className="text-sm text-muted transition-colors hover:text-brand-500" /></li>
               ))}
             </ul>
           </div>
@@ -62,7 +75,7 @@ export default function Footer() {
           <p>© {new Date().getFullYear()} Padharo Homes. All rights reserved.</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {["Terms", "Privacy", "Cookies", "Sitemap"].map((l) => (
-              <a key={l} href="#" className="hover:text-brand-500">{l}</a>
+              <FootLink key={l} label={l} className="hover:text-brand-500" />
             ))}
           </div>
           <div className="flex items-center gap-2">

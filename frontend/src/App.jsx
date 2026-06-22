@@ -15,6 +15,7 @@ import BookingConfirmation from "./pages/BookingConfirmation";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
+import { Terms, Privacy } from "./pages/Legal";
 import RequireAuth from "./components/RequireAuth";
 import { cn } from "./lib/cn";
 
@@ -54,6 +55,8 @@ export default function App() {
             <Route path="/host" element={<RequireAuth><Page><HostDashboard /></Page></RequireAuth>} />
             <Route path="/host/new" element={<RequireAuth><Page><CreateProperty /></Page></RequireAuth>} />
             <Route path="/booking/confirmation" element={<Page><BookingConfirmation /></Page>} />
+            <Route path="/terms" element={<Page><Terms /></Page>} />
+            <Route path="/privacy" element={<Page><Privacy /></Page>} />
             <Route path="/login" element={<Page><Login /></Page>} />
             <Route path="/signup" element={<Page><Signup /></Page>} />
             <Route path="*" element={<Page><NotFound /></Page>} />

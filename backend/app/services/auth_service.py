@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -39,13 +39,34 @@ class OtpInvalidError(OtpError):
     pass
 
 
+class OtpRateLimitError(Exception):
+    """Too many OTP requests for this identifier (maps to HTTP 429)."""
+
+
+def _enforce_rate_limit(db: Session, identifier: str) -> None:
+    window_start = datetime.now(timezone.utc) - timedelta(
+        minutes=settings.otp_request_window_minutes
+    )
+    recent = db.scalar(
+        select(func.count())
+        .select_from(OtpCode)
+        .where(OtpCode.email == identifier, OtpCode.created_at >= window_start)
+    ) or 0
+    if recent >= settings.otp_max_requests:
+        raise OtpRateLimitError(
+            "Too many code requests. Please wait a few minutes and try again."
+        )
+
+
 def issue_otp(db: Session, email: str) -> str:
     """Create and persist a new OTP for the email; return the plaintext code.
 
     The plaintext is returned only so the caller can deliver it (and, in dev
-    mode, surface it for testing). Only the hash is stored.
+    mode, surface it for testing). Only the hash is stored. Rate-limited per
+    identifier to prevent abuse.
     """
     email = normalize_email(email)
+    _enforce_rate_limit(db, email)
     code = generate_otp()
     otp = OtpCode(
         email=email,

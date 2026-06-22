@@ -41,7 +41,12 @@ def _identifier(payload):
 @router.post("/request-otp", response_model=RequestOtpOut)
 def request_otp(payload: RequestOtpIn, db: Session = Depends(get_db)) -> RequestOtpOut:
     identifier, channel = _identifier(payload)
-    code = auth_service.issue_otp(db, identifier)
+    try:
+        code = auth_service.issue_otp(db, identifier)
+    except auth_service.OtpRateLimitError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)
+        ) from exc
 
     sent_via_dev = notifications.send_otp(identifier, code, channel=channel)
 

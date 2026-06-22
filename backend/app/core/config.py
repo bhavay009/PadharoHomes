@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     otp_length: int = 6
     otp_ttl_minutes: int = 10
     otp_max_attempts: int = 5
+    # Rate limiting: max OTP requests per identifier within the window.
+    otp_max_requests: int = 6
+    otp_request_window_minutes: int = 15
 
     # Cloudinary (photo uploads). Supplied via env; never hardcoded.
     cloudinary_cloud_name: str = ""
