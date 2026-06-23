@@ -14,22 +14,49 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function request(path, { method = "GET", body, auth = false } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (auth) {
     const token = getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.detail || `Request failed: ${res.status}`);
+
+  // The free-tier backend can be asleep (cold start ~30-60s). A single fetch
+  // may hang and fail ("Load failed") before it wakes — so we retry network
+  // errors a few times with patience, and use a long per-attempt timeout.
+  let lastErr;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await fetch(`${API_URL}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // A real server response (4xx/5xx) — don't retry, surface the message.
+        throw new ApiError(data.detail || `Request failed: ${res.status}`, res.status);
+      }
+      return data;
+    } catch (err) {
+      if (err instanceof ApiError) throw err; // server responded — real error
+      lastErr = err; // network/timeout — backend may be waking; retry
+      if (attempt < 3) await sleep(3000 + attempt * 3000);
+    }
   }
-  return data;
+  throw new Error(
+    "Couldn't reach the server. It may be waking up — please wait a moment and try again."
+  );
+}
+
+class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
 }
 
 export const getHealth = () => request("/health");
