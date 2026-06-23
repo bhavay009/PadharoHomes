@@ -22,6 +22,9 @@ app = FastAPI(title="Padharo Homes API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    # Also allow the production custom domain (+ www) and any Vercel deployment
+    # URL for this project, regardless of the CORS_ORIGINS env value.
+    allow_origin_regex=r"https://(www\.)?padharohomess\.xyz|https://[a-z0-9-]+\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
